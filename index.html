@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fale e Leia</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--sky:#7fd4ff;--sky2:#c9efff;--sun:#ffd23f;--pink:#ff6fa5;--grass:#3ecf8e;--ink:#2b2d6e;--card:#fff;--ora:#ff9a3c;--blue:#4d8dff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root:not([data-theme="light"]){}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{font-family:'Baloo 2','Trebuchet MS','Comic Sans MS',system-ui,sans-serif;background:linear-gradient(var(--sky) 0%,var(--sky2) 70%,#bff0d4 70%);color:var(--ink);overflow:hidden;position:relative}
+.cloud{position:absolute;background:#fff;border-radius:99px;opacity:.9;animation:drift 40s linear infinite}
+.cloud:before,.cloud:after{content:"";position:absolute;background:#fff;border-radius:50%}
+.c1{width:120px;height:38px;top:8%;left:-150px}.c1:before{width:60px;height:60px;top:-28px;left:16px}.c1:after{width:48px;height:48px;top:-18px;left:60px}
+.c2{width:90px;height:30px;top:20%;left:-120px;animation-delay:-18s;animation-duration:55s}.c2:before{width:46px;height:46px;top:-22px;left:12px}.c2:after{width:36px;height:36px;top:-14px;left:44px}
+@keyframes drift{to{transform:translateX(130vw)}}
+.app{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;padding:12px 16px 18px;gap:10px;max-width:900px;margin:0 auto}
+h1{margin:0;font-size:clamp(22px,5vw,34px);font-weight:800;color:#fff;text-shadow:0 3px 0 var(--blue),0 5px 0 rgba(0,0,0,.12);letter-spacing:.5px}
+.board{flex:1;width:100%;min-height:0;background:var(--card);border:6px solid var(--sun);border-radius:36px;box-shadow:0 8px 0 var(--ora);display:flex;align-items:center;justify-content:center;padding:12px;overflow:hidden;position:relative}
+#word{display:flex;gap:.02em;font-weight:800;line-height:1;white-space:nowrap;font-size:100px;transition:transform .2s}
+#word .l{display:inline-block}#word .s{display:inline-flex}#word.syl{gap:.28em}
+#word.tap .l,#word.tap .s{cursor:pointer;transition:transform .12s}
+#word.tap .hit{transform:scale(1.25)}
+#word.pop{animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{from{transform:scale(.3) rotate(-6deg)}to{transform:scale(1)}}
+.hint{font-size:clamp(20px,5vw,30px);font-weight:600;color:#8a8fc9;text-align:center;line-height:1.2;padding:0 10px}
+.say{font-size:clamp(18px,4.5vw,24px);font-weight:600;color:var(--ink);background:#ffffffcc;border-radius:20px;padding:4px 16px;min-height:34px;text-align:center}
+.controls{display:flex;align-items:center;justify-content:center;gap:clamp(8px,2.5vw,16px)}
+#mic{width:clamp(96px,26vw,128px);height:clamp(96px,26vw,128px);border-radius:50%;border:0;background:var(--pink);color:#fff;font-size:clamp(44px,12vw,60px);cursor:pointer;box-shadow:0 8px 0 #d94a85;transition:transform .1s,box-shadow .1s;display:grid;place-items:center}
+#mic:active{transform:translateY(6px);box-shadow:0 2px 0 #d94a85}
+#mic.on{background:var(--grass);box-shadow:0 8px 0 #25a56c;animation:pulse 1s infinite}
+@keyframes pulse{50%{transform:scale(1.08)}}
+.sm{width:clamp(48px,13vw,68px);height:clamp(48px,13vw,68px);border-radius:50%;border:0;background:var(--blue);color:#fff;font-size:clamp(22px,6vw,30px);cursor:pointer;box-shadow:0 6px 0 #2f66c9}
+.sm.on{background:var(--grass);box-shadow:0 6px 0 #25a56c;outline:4px solid var(--sun)}
+.sm:active{transform:translateY(4px);box-shadow:0 2px 0 #2f66c9}
+.sm:disabled{opacity:.4}
+.typebox{display:none;gap:8px;width:100%;max-width:460px}
+.typebox input{flex:1;min-width:0;font:inherit;font-size:22px;padding:8px 16px;border-radius:99px;border:4px solid var(--sun);outline:none;color:var(--ink)}
+.typebox button{font:inherit;font-weight:800;font-size:20px;border:0;border-radius:99px;padding:0 20px;background:var(--grass);color:#fff;box-shadow:0 4px 0 #25a56c;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--card:#fffdf4}}
+:root[data-theme="dark"]{--card:#fffdf4}
+</style>
+</head>
+<body>
+<div class="cloud c1"></div><div class="cloud c2"></div>
+<main class="app">
+  <h1>Fale e Leia</h1>
+  <div class="board" id="board">
+    <div class="hint" id="hint">Aperte o botão rosa<br>e diga uma palavra!</div>
+    <div id="word" hidden></div>
+  </div>
+  <div class="say" id="say" aria-live="polite"></div>
+  <div class="controls">
+    <button class="sm" id="kb" aria-label="Escrever palavra">⌨️</button>
+    <button class="sm" id="lt" aria-label="Ouvir letras" title="Letras">🔤</button>
+    <button id="mic" aria-label="Falar uma palavra">🎤</button>
+    <button class="sm" id="sy" aria-label="Ouvir sílabas" title="Sílabas">🧩</button>
+    <button class="sm" id="again" aria-label="Ouvir a palavra" disabled>🔊</button>
+  </div>
+  <div class="typebox" id="tb">
+    <input id="inp" style="text-transform:uppercase" placeholder="Digite uma palavra" autocomplete="off" aria-label="Palavra">
+    <button id="ok">Ler</button>
+  </div>
+</main>
+<script>
+const COLORS=['#ff6fa5','#4d8dff','#ff9a3c','#3ecf8e','#a560ff','#ff5a5a'];
+const $=id=>document.getElementById(id);
+const wordEl=$('word'),hint=$('hint'),say=$('say'),mic=$('mic'),again=$('again'),board=$('board');
+let current='',mode='none';
+const NAMES={a:'á',b:'bê',c:'cê',d:'dê',e:'é',f:'éfe',g:'gê',h:'agá',i:'i',j:'jota',k:'cá',l:'éle',m:'ême',n:'ene',o:'ó',p:'pê',q:'quê',r:'érre',s:'ésse',t:'tê',u:'u',v:'vê',w:'dáblio',x:'xis',y:'ípsilon',z:'zê'};
+const V='aeiouáéíóúâêôãõàü',STRONG='aeoáéóâêô';
+function syllabify(w){
+  const t=[];
+  for(let i=0;i<w.length;i++){
+    const p=w.slice(i,i+2),n=w[i+2]||'';
+    if(['ch','lh','nh'].includes(p)||((p==='qu'||p==='gu')&&'eéêiíè'.includes(n))){t.push(p);i++;}
+    else t.push(w[i]);
+  }
+  const isV=x=>x.length===1&&V.includes(x);
+  const cuts=[];let prevV=-1;
+  for(let i=0;i<t.length;i++){
+    if(!isV(t[i]))continue;
+    if(prevV>=0){
+      const gap=i-prevV-1;
+      if(gap===0){const a=t[prevV],b=t[i];if((STRONG.includes(a)&&STRONG.includes(b))||'íú'.includes(b))cuts.push(i);}
+      else if(gap===1)cuts.push(prevV+1);
+      else{const a=t[i-2],b=t[i-1];cuts.push(('bcdfgptv'.includes(a)&&'lr'.includes(b)&&a.length===1)?i-2:i-1);}
+    }
+    prevV=i;
+  }
+  const out=[];let st=0;
+  [...cuts,t.length].forEach(c=>{if(c>st){out.push(t.slice(st,c));st=c;}});
+  return out.length?out:[t];
+}
+function nameOf(ch){const b=ch.normalize('NFD').replace(/[\u0300-\u036f]/g,'');return NAMES[b]||ch;}
+function speak(t){
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';u.rate=.8;u.pitch=1.2;speechSynthesis.speak(u);}catch(e){}
+}
+function bump(el){el.classList.add('hit');setTimeout(()=>el.classList.remove('hit'),220);}
+function mk(text,color,cls){const s=document.createElement('span');s.className=cls;s.textContent=text.toUpperCase();s.style.color=color;return s;}
+function render(){
+  if(!current)return;
+  hint.hidden=true;wordEl.hidden=false;wordEl.innerHTML='';
+  wordEl.className=(mode==='syl'?'syl ':'')+(mode!=='none'?'tap':'');
+  if(mode==='syl'){
+    syllabify(current).forEach((sy,i)=>{
+      const txt=sy.join(''),g=document.createElement('span');g.className='s';
+      sy.forEach(ch=>g.appendChild(mk(ch,COLORS[i%COLORS.length],'l0')));
+      g.style.color=COLORS[i%COLORS.length];
+      g.querySelectorAll('span').forEach(x=>x.style.pointerEvents='none');
+      g.onclick=()=>{bump(g);speak(txt);};
+      wordEl.appendChild(g);
+    });
+  }else{
+    [...current].forEach((ch,i)=>{
+      const s=mk(ch===' '?'\u00a0':ch,COLORS[i%COLORS.length],'l');
+      if(mode==='let'&&ch!==' ')s.onclick=()=>{bump(s);speak(nameOf(ch));};
+      wordEl.appendChild(s);
+    });
+  }
+  fit();
+}
+function fit(){
+  if(wordEl.hidden)return;
+  wordEl.style.fontSize='100px';
+  const w=board.clientWidth-40,h=board.clientHeight-40;
+  wordEl.style.fontSize=Math.min(100*Math.min(w/wordEl.scrollWidth,h/wordEl.scrollHeight),420)+'px';
+}
+function show(text){
+  text=text.trim().toLowerCase().replace(/[.,!?]/g,'');
+  if(!text)return;
+  current=text;render();
+  wordEl.classList.add('pop');again.disabled=false;
+  say.textContent=mode==='let'?'Toque numa letra!':mode==='syl'?'Toque numa sílaba!':'Muito bem! 🌟';
+  speak(text);
+}
+function setMode(m){
+  mode=mode===m?'none':m;
+  $('lt').classList.toggle('on',mode==='let');$('sy').classList.toggle('on',mode==='syl');
+  say.textContent=mode==='let'?'Toque numa letra para ouvir!':mode==='syl'?'Toque numa sílaba para ouvir!':'';
+  render();
+}
+$('lt').onclick=()=>setMode('let');
+$('sy').onclick=()=>setMode('syl');
+addEventListener('resize',fit);
+again.onclick=()=>current&&speak(current);
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,listening=false;
+function openTyping(msg){$('tb').style.display='flex';if(msg)say.textContent=msg;}
+$('kb').onclick=()=>{const t=$('tb');t.style.display=t.style.display==='flex'?'none':'flex';if(t.style.display==='flex')$('inp').focus();};
+function submit(){const v=$('inp').value;$('inp').value='';show(v);}
+$('ok').onclick=submit;
+$('inp').addEventListener('keydown',e=>{if(e.key==='Enter')submit();});
+mic.onclick=()=>{
+  if(!SR){openTyping('Este aparelho não ouve a voz. Escreva a palavra!');return;}
+  if(listening){rec&&rec.stop();return;}
+  rec=new SR();rec.lang='pt-BR';rec.interimResults=false;rec.maxAlternatives=1;
+  rec.onstart=()=>{listening=true;mic.classList.add('on');mic.textContent='👂';say.textContent='Estou ouvindo...';};
+  rec.onresult=e=>{show(e.results[0][0].transcript);};
+  rec.onerror=e=>{
+    if(e.error==='not-allowed'||e.error==='service-not-allowed')openTyping('Libere o microfone ou escreva a palavra.');
+    else if(e.error==='no-speech')say.textContent='Não ouvi nada. Tente de novo!';
+    else say.textContent='Vamos tentar de novo?';
+  };
+  rec.onend=()=>{listening=false;mic.classList.remove('on');mic.textContent='🎤';};
+  try{rec.start();}catch(e){}
+};
+</script>
+</body>
+</html>
