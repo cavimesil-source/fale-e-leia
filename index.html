@@ -29,18 +29,27 @@ h1{margin:0;font-size:clamp(22px,5vw,34px);font-weight:800;color:#fff;text-shado
 @keyframes pop{from{transform:scale(.3) rotate(-6deg)}to{transform:scale(1)}}
 .hint{font-size:clamp(20px,5vw,30px);font-weight:600;color:#8a8fc9;text-align:center;line-height:1.2;padding:0 10px}
 .say{font-size:clamp(18px,4.5vw,24px);font-weight:600;color:var(--ink);background:#ffffffcc;border-radius:20px;padding:4px 16px;min-height:34px;text-align:center}
-.controls{display:flex;align-items:center;justify-content:center;gap:clamp(8px,2.5vw,16px)}
-#mic{width:clamp(96px,26vw,128px);height:clamp(96px,26vw,128px);border-radius:50%;border:0;background:var(--pink);color:#fff;font-size:clamp(44px,12vw,60px);cursor:pointer;box-shadow:0 8px 0 #d94a85;transition:transform .1s,box-shadow .1s;display:grid;place-items:center}
+.controls{display:flex;align-items:center;justify-content:center;gap:clamp(6px,2vw,16px)}
+#mic{width:clamp(84px,22vw,128px);height:clamp(84px,22vw,128px);border-radius:50%;border:0;background:var(--pink);color:#fff;font-size:clamp(44px,12vw,60px);cursor:pointer;box-shadow:0 8px 0 #d94a85;transition:transform .1s,box-shadow .1s;display:grid;place-items:center}
 #mic:active{transform:translateY(6px);box-shadow:0 2px 0 #d94a85}
 #mic.on{background:var(--grass);box-shadow:0 8px 0 #25a56c;animation:pulse 1s infinite}
 @keyframes pulse{50%{transform:scale(1.08)}}
-.sm{width:clamp(48px,13vw,68px);height:clamp(48px,13vw,68px);border-radius:50%;border:0;background:var(--blue);color:#fff;font-size:clamp(22px,6vw,30px);cursor:pointer;box-shadow:0 6px 0 #2f66c9}
+.sm{width:clamp(42px,11.5vw,68px);height:clamp(42px,11.5vw,68px);border-radius:50%;border:0;background:var(--blue);color:#fff;font-size:clamp(22px,6vw,30px);cursor:pointer;box-shadow:0 6px 0 #2f66c9}
 .sm.on{background:var(--grass);box-shadow:0 6px 0 #25a56c;outline:4px solid var(--sun)}
 .sm:active{transform:translateY(4px);box-shadow:0 2px 0 #2f66c9}
 .sm:disabled{opacity:.4}
 .typebox{display:none;gap:8px;width:100%;max-width:460px}
 .typebox input{flex:1;min-width:0;font:inherit;font-size:22px;padding:8px 16px;border-radius:99px;border:4px solid var(--sun);outline:none;color:var(--ink)}
 .typebox button{font:inherit;font-weight:800;font-size:20px;border:0;border-radius:99px;padding:0 20px;background:var(--grass);color:#fff;box-shadow:0 4px 0 #25a56c;cursor:pointer}
+.pad{position:absolute;inset:0;background:#fffdf4;border-radius:30px;display:flex;flex-direction:column;align-items:center;padding:10px;z-index:2}
+.pad[hidden]{display:none}
+.pad .bar{display:flex;gap:10px;align-self:flex-end}
+.pad .bar button{width:48px;height:48px;border-radius:50%;border:0;font-size:22px;background:var(--blue);color:#fff;cursor:pointer;box-shadow:0 4px 0 #2f66c9}
+.pad .bar button:active{transform:translateY(3px);box-shadow:0 1px 0 #2f66c9}
+#svgw{flex:1;min-height:0;width:100%}#svgw svg{width:100%;height:100%}
+.ink{fill:none;stroke-width:9;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.1s ease-in-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){.ink{stroke-dashoffset:0!important}}
 button:focus-visible,input:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--card:#fffdf4}}
@@ -54,6 +63,7 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--ink);outline-of
   <div class="board" id="board">
     <div class="hint" id="hint">Aperte o botão rosa<br>e diga uma palavra!</div>
     <div id="word" hidden></div>
+    <div class="pad" id="pad" hidden><div class="bar"><button id="rp" aria-label="Ver de novo">↻</button><button id="nx" aria-label="Próxima letra">▶</button><button id="cl" aria-label="Fechar">✕</button></div><div id="svgw"></div></div>
   </div>
   <div class="say" id="say" aria-live="polite"></div>
   <div class="controls">
@@ -61,6 +71,7 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--ink);outline-of
     <button class="sm" id="lt" aria-label="Ouvir letras" title="Letras">🔤</button>
     <button id="mic" aria-label="Falar uma palavra">🎤</button>
     <button class="sm" id="sy" aria-label="Ouvir sílabas" title="Sílabas">🧩</button>
+    <button class="sm" id="wr" aria-label="Aprender a escrever" title="Escrever">✏️</button>
     <button class="sm" id="again" aria-label="Ouvir a palavra" disabled>🔊</button>
   </div>
   <div class="typebox" id="tb">
@@ -118,9 +129,10 @@ function render(){
       wordEl.appendChild(g);
     });
   }else{
-    [...current].forEach((ch,i)=>{
+    let wk=0;[...current].forEach((ch,i)=>{
       const s=mk(ch===' '?'\u00a0':ch,COLORS[i%COLORS.length],'l');
       if(mode==='let'&&ch!==' ')s.onclick=()=>{bump(s);speak(nameOf(ch));};
+      if(mode==='write'&&G[base(ch)]){const k=wk++;s.onclick=()=>{bump(s);openWriter(k);};}
       wordEl.appendChild(s);
     });
   }
@@ -135,19 +147,72 @@ function fit(){
 function show(text){
   text=text.trim().toLowerCase().replace(/[.,!?]/g,'');
   if(!text)return;
-  current=text;render();
+  current=text;closePad();render();
   wordEl.classList.add('pop');again.disabled=false;
-  say.textContent=mode==='let'?'Toque numa letra!':mode==='syl'?'Toque numa sílaba!':'Muito bem! 🌟';
+  say.textContent=mode==='let'?'Toque numa letra!':mode==='syl'?'Toque numa sílaba!':mode==='write'?'Toque numa letra para escrever!':'Muito bem! 🌟';
   speak(text);
 }
 function setMode(m){
-  mode=mode===m?'none':m;
-  $('lt').classList.toggle('on',mode==='let');$('sy').classList.toggle('on',mode==='syl');
-  say.textContent=mode==='let'?'Toque numa letra para ouvir!':mode==='syl'?'Toque numa sílaba para ouvir!':'';
+  mode=mode===m?'none':m;closePad();
+  [['lt','let'],['sy','syl'],['wr','write']].forEach(([id,k])=>$(id).classList.toggle('on',mode===k));
+  say.textContent={let:'Toque numa letra para ouvir!',syl:'Toque numa sílaba para ouvir!',write:'Toque numa letra para aprender a escrever!'}[mode]||'';
   render();
 }
 $('lt').onclick=()=>setMode('let');
 $('sy').onclick=()=>setMode('syl');
+const G={
+A:["M50 10 L20 100","M50 10 L80 100","M32 68 L68 68"],
+B:["M25 10 V100","M25 10 H50 C75 10 75 55 50 55 H25","M50 55 C82 55 82 100 50 100 H25"],
+C:["M78 25 C65 5 25 8 22 50 C20 92 60 108 80 80"],
+D:["M25 10 V100","M25 10 H45 C85 10 85 100 45 100 H25"],
+E:["M25 10 V100","M25 10 H78","M25 55 H68","M25 100 H78"],
+F:["M25 10 V100","M25 10 H78","M25 55 H68"],
+G:["M78 25 C65 5 25 8 22 50 C20 92 65 108 80 75 V58 H52"],
+H:["M25 10 V100","M75 10 V100","M25 55 H75"],
+I:["M50 10 V100","M32 10 H68","M32 100 H68"],
+J:["M62 10 V80 C62 108 25 105 22 78","M45 10 H80"],
+K:["M25 10 V100","M75 10 L25 58","M42 44 L78 100"],
+L:["M25 10 V100 H78"],
+M:["M20 100 V10 L50 70 L80 10 V100"],
+N:["M25 100 V10 L75 100 V10"],
+O:["M50 10 C10 10 10 100 50 100 C90 100 90 10 50 10"],
+P:["M25 10 V100","M25 10 H50 C85 10 85 58 50 58 H25"],
+Q:["M50 10 C10 10 10 100 50 100 C90 100 90 10 50 10","M58 78 L82 108"],
+R:["M25 10 V100","M25 10 H50 C85 10 85 55 50 55 H25","M50 55 L78 100"],
+S:["M76 25 C68 8 24 8 26 32 C28 56 78 50 76 78 C74 106 30 104 22 80"],
+T:["M20 10 H80","M50 10 V100"],
+U:["M25 10 V68 C25 108 75 108 75 68 V10"],
+V:["M20 10 L50 100 L80 10"],
+W:["M15 10 L32 100 L50 40 L68 100 L85 10"],
+X:["M22 10 L78 100","M78 10 L22 100"],
+Y:["M22 10 L50 55 L78 10","M50 55 V100"],
+Z:["M22 10 H78 L22 100 H78"]};
+const base=c=>c.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+const LS=()=>[...current].map(base).filter(b=>G[b]);
+let wIdx=0;
+function closePad(){$('pad').hidden=true;$('svgw').innerHTML='';}
+function openWriter(i){wIdx=i;drawLetter();}
+function drawLetter(){
+  const L=LS();
+  if(wIdx>=L.length){closePad();say.textContent='Parabéns! Você escreveu '+current.toUpperCase()+'! 🎉';return;}
+  const P=G[L[wIdx]],col=COLORS[wIdx%COLORS.length];
+  let h='<svg viewBox="-40 0 180 120" preserveAspectRatio="xMidYMid meet"><line x1="-40" x2="140" y1="10" y2="10" stroke="#9fd0ff" stroke-width="1.5"/><line x1="-40" x2="140" y1="55" y2="55" stroke="#ffb3cf" stroke-width="1.5" stroke-dasharray="4 4"/><line x1="-40" x2="140" y1="100" y2="100" stroke="#9fd0ff" stroke-width="1.5"/>';
+  const T='fill="none" stroke-linecap="round" stroke-linejoin="round"';
+  P.forEach(d=>h+=`<path d="${d}" ${T} stroke="#e6e8f7" stroke-width="9"/>`);
+  P.forEach((d,i)=>h+=`<path class="ink" d="${d}" pathLength="1" stroke="${col}" style="animation-delay:${(.3+i*1.5).toFixed(1)}s"/>`);
+  P.forEach((d,i)=>{
+    const t=.3+i*1.5,[,x,y]=d.match(/M([\d.]+) ([\d.]+)/);
+    h+=`<circle cx="${x}" cy="${y}" r="8" fill="#ff6fa5"/><text x="${x}" y="${+y+4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="#fff" font-family="Baloo 2,sans-serif">${i+1}</text>`;
+    h+=`<circle r="7" fill="#ffd23f" stroke="#2b2d6e" stroke-width="3" opacity="0"><set attributeName="opacity" to="1" begin="${t.toFixed(1)}s"/><set attributeName="opacity" to="0" begin="${(t+1.1).toFixed(1)}s"/><animateMotion path="${d}" dur="1.1s" begin="${t.toFixed(1)}s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".45 0 .55 1"/></circle>`;
+  });
+  $('svgw').innerHTML=h+'</svg>';$('pad').hidden=false;
+  say.textContent=`Letra ${L[wIdx]} — ${wIdx+1} de ${L.length}`;
+  speak(NAMES[L[wIdx].toLowerCase()]);
+}
+$('rp').onclick=drawLetter;
+$('nx').onclick=()=>{wIdx++;drawLetter();};
+$('cl').onclick=()=>{closePad();say.textContent='Toque numa letra para aprender a escrever!';};
+$('wr').onclick=()=>setMode('write');
 addEventListener('resize',fit);
 again.onclick=()=>current&&speak(current);
 
