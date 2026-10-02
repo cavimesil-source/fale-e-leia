@@ -22,7 +22,8 @@ body{font-family:'Baloo 2','Trebuchet MS','Comic Sans MS',system-ui,sans-serif;b
 h1{margin:0;font-size:clamp(22px,5vw,34px);font-weight:800;color:#fff;text-shadow:0 3px 0 var(--blue),0 5px 0 rgba(0,0,0,.12);letter-spacing:.5px}
 .board{flex:1;width:100%;min-height:0;background:var(--card);border:6px solid var(--sun);border-radius:36px;box-shadow:0 8px 0 var(--ora);display:flex;align-items:center;justify-content:center;padding:12px;overflow:hidden;position:relative}
 #word{display:flex;gap:.02em;font-weight:800;line-height:1;white-space:nowrap;font-size:100px;transition:transform .2s}
-#word .l{display:inline-block}#word .s{display:inline-flex}#word.syl{gap:.28em}
+#word .l{display:inline-block}#word .s{display:inline-flex}#word.syl{gap:0}
+#word .s{margin:0 .14em;padding:0 .04em .02em;border-bottom:.05em solid currentColor;border-radius:.04em}
 #word.tap .l,#word.tap .s{cursor:pointer;transition:transform .12s}
 #word.tap .hit{transform:scale(1.25)}
 #word.pop{animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
@@ -115,7 +116,15 @@ function syllabify(w){
 }
 function nameOf(ch){const b=ch.normalize('NFD').replace(/[\u0300-\u036f]/g,'');return NAMES[b]||ch;}
 function speak(t,q){
+  t=String(t).replace(/\p{Extended_Pictographic}|\uFE0F|\u200d/gu,'').trim();if(!t)return;
   try{if(!(q||keepQ))speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';u.rate=.8;u.pitch=1.2;speechSynthesis.speak(u);}catch(e){}
+}
+const ANDROID=/Android/i.test(navigator.userAgent);
+function speakSlow(t){
+  t=String(t).replace(/\p{Extended_Pictographic}|\uFE0F|\u200d/gu,'').trim();if(!t)return;
+  try{speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(ANDROID?t+'.':t);
+    u.lang='pt-BR';u.rate=ANDROID?.6:.8;u.pitch=1.1;speechSynthesis.speak(u);}catch(e){}
 }
 function bump(el){el.classList.add('hit');setTimeout(()=>el.classList.remove('hit'),220);}
 function mk(text,color,cls){const s=document.createElement('span');s.className=cls;s.textContent=text.toUpperCase();s.style.color=color;return s;}
@@ -129,13 +138,13 @@ function render(){
       sy.forEach(ch=>g.appendChild(mk(ch,COLORS[i%COLORS.length],'l0')));
       g.style.color=COLORS[i%COLORS.length];
       g.querySelectorAll('span').forEach(x=>x.style.pointerEvents='none');
-      g.onclick=()=>{bump(g);speak(txt);};
+      g.onclick=()=>{bump(g);speakSlow(txt);};
       wordEl.appendChild(g);
     });
   }else{
     let wk=0;[...current].forEach((ch,i)=>{
       const s=mk(ch===' '?'\u00a0':ch,COLORS[i%COLORS.length],'l');
-      if(mode==='let'&&ch!==' ')s.onclick=()=>{bump(s);speak(nameOf(ch));};
+      if(mode==='let'&&ch!==' ')s.onclick=()=>{bump(s);speakSlow(nameOf(ch));};
       if(mode==='write'&&G[base(ch)]){const k=wk++;s.onclick=()=>{bump(s);openWriter(k);};}
       wordEl.appendChild(s);
     });
@@ -224,7 +233,7 @@ function drawLetter(){
   });
   $('svgw').innerHTML=h+'</svg>';$('pad').hidden=false;
   say.textContent=`Letra ${L[wIdx]} — ${wIdx+1} de ${L.length}`;
-  speak(NAMES[L[wIdx].toLowerCase()]);
+  speakSlow(NAMES[L[wIdx].toLowerCase()]);
 }
 $('wr').onclick=()=>setMode('write');
 addEventListener('resize',fit);
