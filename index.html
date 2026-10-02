@@ -52,7 +52,7 @@ h1{margin:0;font-size:clamp(22px,5vw,34px);font-weight:800;color:#fff;text-shado
 @media(prefers-reduced-motion:reduce){.ink{stroke-dashoffset:0!important}}
 .b{display:flex;flex-direction:column;align-items:center;gap:4px}
 .b span{font-weight:800;font-size:clamp(11px,3vw,15px);color:#fff;text-shadow:0 2px 0 rgba(43,45,110,.4)}
-.pad .bar{align-items:flex-start}.pad .b span{color:var(--ink);text-shadow:none;font-size:13px}
+.pad .bar{align-items:flex-start;align-self:center;justify-content:center;gap:8px}.pad .b span{color:var(--ink);text-shadow:none;font-size:13px}
 #svgw svg{touch-action:none}
 button:focus-visible,input:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
@@ -67,7 +67,7 @@ button:focus-visible,input:focus-visible{outline:4px solid var(--ink);outline-of
   <div class="board" id="board">
     <div class="hint" id="hint">Aperte o botão rosa<br>e diga uma palavra!</div>
     <div id="word" hidden></div>
-    <div class="pad" id="pad" hidden><div class="bar"><div class="b"><button id="rp" aria-label="De novo">↻</button><span>De novo</span></div><div class="b"><button id="tr" aria-label="Sua vez">✍️</button><span>Sua vez</span></div><div class="b"><button id="nx" aria-label="Próxima">▶</button><span>Próxima</span></div><div class="b"><button id="cl" aria-label="Fechar">✕</button><span>Fechar</span></div></div><div id="svgw"></div></div>
+    <div class="pad" id="pad" hidden><div class="bar"><div class="b"><button id="rp" aria-label="De novo">↻</button><span>De novo</span></div><div class="b"><button id="tr" aria-label="Sua vez">✍️</button><span>Sua vez</span></div><div class="b"><button id="pv" aria-label="Anterior">◀</button><span>Anterior</span></div><div class="b"><button id="nx" aria-label="Próxima">▶</button><span>Próxima</span></div><div class="b"><button id="cl" aria-label="Fechar">✕</button><span>Fechar</span></div></div><div id="svgw"></div></div>
   </div>
   <div class="say" id="say" aria-live="polite"></div>
   <div class="controls">
@@ -88,7 +88,7 @@ const COLORS=['#ff6fa5','#4d8dff','#ff9a3c','#3ecf8e','#a560ff','#ff5a5a'];
 const $=id=>document.getElementById(id);
 const wordEl=$('word'),hint=$('hint'),say=$('say'),mic=$('mic'),again=$('again'),board=$('board');
 let current='',mode='none';
-const NAMES={a:'á',b:'bê',c:'cê',d:'dê',e:'é',f:'éfe',g:'gê',h:'agá',i:'i',j:'jota',k:'cá',l:'éle',m:'ême',n:'ene',o:'ó',p:'pê',q:'quê',r:'érre',s:'ésse',t:'tê',u:'u',v:'vê',w:'dáblio',x:'xis',y:'ípsilon',z:'zê'};
+const NAMES={a:'ah',b:'bê',c:'cê',d:'dê',e:'eh',f:'éfe',g:'gê',h:'agá',i:'i',j:'jota',k:'cá',l:'éle',m:'ême',n:'ene',o:'oh',p:'pê',q:'quê',r:'érre',s:'ésse',t:'tê',u:'u',v:'vê',w:'dáblio',x:'xis',y:'ípsilon',z:'zê'};
 const V='aeiouáéíóúâêôãõàü',STRONG='aeoáéóâêô';
 function syllabify(w){
   const t=[];
@@ -160,6 +160,7 @@ function setMode(m){
   mode=mode===m?'none':m;closePad();
   [['lt','let'],['sy','syl'],['wr','write']].forEach(([id,k])=>$(id).classList.toggle('on',mode===k));
   say.textContent={let:'Toque numa letra para ouvir!',syl:'Toque numa sílaba para ouvir!',write:'Toque numa letra para aprender a escrever!'}[mode]||'';
+  if(mode!=='none')speak(say.textContent);
   render();
 }
 $('lt').onclick=()=>setMode('let');
@@ -239,54 +240,64 @@ mic.onclick=()=>{
   try{rec.start();}catch(e){}
 };
 const SVGN='<svg viewBox="-40 0 180 120" preserveAspectRatio="xMidYMid meet"><line x1="-40" x2="140" y1="10" y2="10" stroke="#9fd0ff" stroke-width="1.5"/><line x1="-40" x2="140" y1="55" y2="55" stroke="#ffb3cf" stroke-width="1.5" stroke-dasharray="4 4"/><line x1="-40" x2="140" y1="100" y2="100" stroke="#9fd0ff" stroke-width="1.5"/>';
+function rs(a,n){
+  const c=[0];for(let i=1;i<a.length;i++)c.push(c[i-1]+Math.hypot(a[i].x-a[i-1].x,a[i].y-a[i-1].y));
+  const T=c[c.length-1],o=[];let j=1;
+  for(let k=0;k<n;k++){const t=T*k/(n-1);while(j<a.length-1&&c[j]<t)j++;const d=c[j]-c[j-1]||1,u=Math.min(1,Math.max(0,(t-c[j-1])/d));
+    o.push({x:a[j-1].x+(a[j].x-a[j-1].x)*u,y:a[j-1].y+(a[j].y-a[j-1].y)*u});}
+  return o;
+}
+function okStroke(pts,r){
+  const c=rs(pts,20),d=c.map((p,i)=>Math.hypot(p.x-r[i].x,p.y-r[i].y)),m=d.reduce((a,b)=>a+b)/d.length;
+  return m<=14&&Math.max(...d)<=30&&d[0]<=22&&d[19]<=26;
+}
+function inst(t){say.textContent=t;speak(t);}
 function drawTrace(){
   const L=LS();padMode='trace';
-  const P=G[L[wIdx]];let h=SVGN;
+  const P=G[L[wIdx]],col=COLORS[wIdx%COLORS.length];let h=SVGN;
   P.forEach(d=>h+=`<path class="mold" d="${d}" fill="none" stroke="#dfe2f6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>`);
-  P.forEach((d,i)=>{const [,x,y]=d.match(/M([\d.]+) ([\d.]+)/);h+=`<circle cx="${x}" cy="${y}" r="8" fill="#ff6fa5"/><text x="${x}" y="${+y+4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="#fff" font-family="Baloo 2,sans-serif">${i+1}</text>`;});
+  P.forEach((d,i)=>{const [,x,y]=d.match(/M([\d.]+) ([\d.]+)/);h+=`<g id="bd${i}"><circle cx="${x}" cy="${y}" r="8" fill="#ff6fa5"/><text x="${x}" y="${+y+4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="#fff" font-family="Baloo 2,sans-serif">${i+1}</text></g>`;});
   h+='<g id="kid"></g><rect id="hit" x="-40" y="0" width="180" height="120" fill="transparent"/></svg>';
   $('svgw').innerHTML=h;$('pad').hidden=false;
   const svg=$('svgw').querySelector('svg'),hit=$('hit'),kid=$('kid');
-  const S=[];svg.querySelectorAll('.mold').forEach(p=>{const n=p.getTotalLength();for(let l=0;l<=n;l+=2.5)S.push(p.getPointAtLength(l));});
-  const strokes=[];let cur=null,el=null,done=false;
+  const refs=[...svg.querySelectorAll('.mold')].map(p=>{const n=p.getTotalLength(),a=[];for(let k=0;k<20;k++)a.push(p.getPointAtLength(n*k/19));return a;});
+  let idx=0,cur=null,el=null;
   const pt=e=>{const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM().inverse());};
-  const near=(p,A,t)=>A.some(q=>(p.x-q.x)**2+(p.y-q.y)**2<t*t);
   const path=()=>'M'+cur.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' L');
-  hit.onpointerdown=e=>{if(done)return;e.preventDefault();hit.setPointerCapture(e.pointerId);cur=[pt(e)];
+  hit.onpointerdown=e=>{if(idx>=P.length)return;e.preventDefault();hit.setPointerCapture(e.pointerId);cur=[pt(e)];
     el=document.createElementNS('http://www.w3.org/2000/svg','path');
-    el.setAttribute('fill','none');el.setAttribute('stroke',COLORS[wIdx%COLORS.length]);el.setAttribute('stroke-width','8');el.setAttribute('stroke-linecap','round');el.setAttribute('stroke-linejoin','round');
+    [['fill','none'],['stroke',col],['stroke-width','8'],['stroke-linecap','round'],['stroke-linejoin','round']].forEach(([k,v])=>el.setAttribute(k,v));
     el.setAttribute('d',path()+' l0.1 0.1');kid.appendChild(el);};
   hit.onpointermove=e=>{if(!cur)return;cur.push(pt(e));el.setAttribute('d',path());};
   const end=()=>{
-    if(!cur)return;strokes.push(cur);cur=null;
-    const all=[].concat(...strokes);
-    const cov=S.filter(q=>near(q,all,14)).length/S.length,acc=all.filter(p=>near(p,S,16)).length/all.length;
-    if(cov>=.8&&acc>=.8){
-      done=true;kid.querySelectorAll('path').forEach(p=>p.setAttribute('stroke','#3ecf8e'));
-      svg.insertAdjacentHTML('beforeend','<text x="50" y="62" text-anchor="middle" font-size="46">🌟</text>');
-      say.textContent='Muito bem! Você escreveu a letra '+L[wIdx]+'! 🌟';speak('Muito bem!');
-    }else if(strokes.length>=P.length){
-      say.textContent='Quase! Vamos tentar de novo.';speak('Quase! Vamos tentar de novo.');
-      done=true;setTimeout(()=>{if(padMode==='trace'&&!$('pad').hidden)drawTrace();},1600);
-    }
+    if(!cur)return;const pts=cur;cur=null;
+    let T=0;for(let i=1;i<pts.length;i++)T+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+    if(T<12){el.remove();return;}
+    if(okStroke(pts,refs[idx])){
+      el.setAttribute('stroke','#3ecf8e');$('bd'+idx).style.opacity=.15;idx++;
+      if(idx>=P.length){
+        svg.insertAdjacentHTML('beforeend','<text x="50" y="62" text-anchor="middle" font-size="46">🌟</text>');
+        inst('Muito bem! Você escreveu a letra '+L[wIdx]+'! 🌟');
+      }else inst('Muito bem! Agora o traço '+(idx+1)+'.');
+    }else{el.remove();inst('Quase! Comece na bolinha '+(idx+1)+' e siga o caminho.');}
   };
   hit.onpointerup=end;hit.onpointercancel=end;
-  say.textContent='Sua vez! Trace a letra '+L[wIdx]+' ✍️';speak('Agora é a sua vez!');
+  say.textContent='Sua vez! Comece na bolinha 1 ✍️';speak('Agora é a sua vez! Comece na bolinha 1.');
 }
 const redo=()=>padMode==='trace'?drawTrace():drawLetter();
-const LABEL={kb:'Teclado',lt:'Letras',mic:'Falar',sy:'Sílabas',wr:'Escrever',again:'Ouvir',rp:'De novo',tr:'Sua vez',nx:'Próxima',cl:'Fechar'};
-const H={rp:redo,tr:drawTrace,
+const H={rp:drawLetter,tr:drawTrace,
+  pv:()=>{wIdx=Math.max(0,wIdx-1);redo();},
   nx:()=>{wIdx++;if(wIdx>=LS().length)drawLetter();else redo();},
-  cl:()=>{closePad();say.textContent='Toque numa letra para aprender a escrever!';}};
+  cl:()=>{closePad();inst('Toque numa letra para aprender a escrever.');}};
+Object.entries(H).forEach(([k,f])=>$(k).onclick=()=>f());
 function speakThen(t,cb){
   let ok=false;const go=()=>{if(!ok){ok=true;cb();}};
-  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';u.rate=.85;u.pitch=1.2;u.onend=go;speechSynthesis.speak(u);setTimeout(go,1800);}catch(e){go();}
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';u.rate=.85;u.pitch=1.2;u.onend=go;speechSynthesis.speak(u);setTimeout(go,2000);}catch(e){go();}
 }
-Object.keys(LABEL).forEach(id=>{
-  const el=$(id),f=H[id]||el.onclick;
-  if(id==='mic'){el.onclick=e=>{if(listening)f(e);else speakThen(LABEL[id],()=>f(e));};return;}
-  el.onclick=e=>{speakThen(LABEL[id],()=>{});keepQ=true;try{f&&f(e);}finally{keepQ=false;}};
-});
+const kbF=$('kb').onclick;
+$('kb').onclick=e=>{kbF(e);if($('tb').style.display==='flex')inst('Digite uma palavra!');};
+const micF=mic.onclick;
+mic.onclick=e=>{if(listening||!SR)micF(e);else{say.textContent='Diga uma palavra!';speakThen('Diga uma palavra',()=>micF(e));}};
 </script>
 </body>
 </html>
